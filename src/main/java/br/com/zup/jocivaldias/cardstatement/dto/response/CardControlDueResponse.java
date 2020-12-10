@@ -2,7 +2,7 @@ package br.com.zup.jocivaldias.cardstatement.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class CardDueResponse {
+public class CardControlDueResponse {
 
     private String id;
     @JsonProperty("dia")
@@ -10,7 +10,7 @@ public class CardDueResponse {
     @JsonProperty("dataDeCriacao")
     private String creationDate;
 
-    public CardDueResponse(String id, Integer day, String creationDate) {
+    public CardControlDueResponse(String id, Integer day, String creationDate) {
         this.id = id;
         this.day = day;
         this.creationDate = creationDate;

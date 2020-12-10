@@ -7,6 +7,8 @@ import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -37,6 +39,9 @@ public class Card {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CardStatus status;
+
+    @OneToMany(mappedBy = "card", fetch = FetchType.LAZY)
+    private Set<CardStatement> cardStatements = new HashSet<>();
 
     @Deprecated
     private Card() {
@@ -72,6 +77,18 @@ public class Card {
 
     public Integer getDueDay() {
         return dueDay;
+    }
+
+    public BigDecimal getLimit() {
+        return limit;
+    }
+
+    public Set<CardStatement> getCardStatements() {
+        return cardStatements;
+    }
+
+    public void addStatement(CardStatement cardStatement){
+        this.cardStatements.add(cardStatement);
     }
 
     @Override

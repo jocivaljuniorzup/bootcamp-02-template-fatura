@@ -1,7 +1,7 @@
 package br.com.zup.jocivaldias.cardstatement.service;
 
 
-import br.com.zup.jocivaldias.cardstatement.dto.response.CardResponse;
+import br.com.zup.jocivaldias.cardstatement.dto.response.CardControlResponse;
 import br.com.zup.jocivaldias.cardstatement.entity.Card;
 import br.com.zup.jocivaldias.cardstatement.entity.CardStatement;
 import br.com.zup.jocivaldias.cardstatement.entity.Transaction;
@@ -24,23 +24,23 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
-public class CreditCardControlService {
+public class CardControlService {
 
-    private CreditCardControl creditCardControl;
+    private CardControl cardControl;
     private CardRepository cardRepository;
     private TransactionRepository transactionRepository;
     private CardStatementRepository cardStatementRepository;
 
     private final TransactionTemplate transactionTemplate;
 
-    private Logger logger = LoggerFactory.getLogger(CreditCardControlService.class);
+    private Logger logger = LoggerFactory.getLogger(CardControlService.class);
 
-    public CreditCardControlService(CreditCardControl creditCardControl,
-                                    CardRepository cardRepository,
-                                    TransactionRepository transactionRepository,
-                                    CardStatementRepository cardStatementRepository,
-                                    TransactionTemplate transactionTemplate) {
-        this.creditCardControl = creditCardControl;
+    public CardControlService(CardControl cardControl,
+                              CardRepository cardRepository,
+                              TransactionRepository transactionRepository,
+                              CardStatementRepository cardStatementRepository,
+                              TransactionTemplate transactionTemplate) {
+        this.cardControl = cardControl;
         this.cardRepository = cardRepository;
         this.transactionRepository = transactionRepository;
         this.cardStatementRepository = cardStatementRepository;
@@ -54,10 +54,10 @@ public class CreditCardControlService {
 
         for (Card card : cardsWithoutInfo) {
             try {
-                CardResponse cardResponse = creditCardControl.getCreditCard(card.getCardNumber());
+                CardControlResponse cardControlResponse = cardControl.getCreditCard(card.getCardNumber());
                 card.setStatus(CardStatus.PROCESSED);
-                card.setLimit(cardResponse.getLimit());
-                card.setDueDay(cardResponse.getCardDueResponse().getDay());
+                card.setLimit(cardControlResponse.getLimit());
+                card.setDueDay(cardControlResponse.getCardDueResponse().getDay());
 
                 transactionTemplate.execute(status -> {
                     cardRepository.save(card);
@@ -72,6 +72,7 @@ public class CreditCardControlService {
         }
     }
 
+    //TODO: Talvez seja interessante ter um serviço que cria as faturas e um que depois faça a vinculação
     @Scheduled(fixedDelay = 5000)
     protected void processTransactions(){
         Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "effectiveOn"));
@@ -99,14 +100,34 @@ public class CreditCardControlService {
                 LocalDate endDate = LocalDate.of(year, month, lastDayOfStatement);
                 LocalDate dueDate = LocalDate.of(year, month, dueDayOfStatement);
 
-                cardStatement = new CardStatement(card, endDate, dueDate);
+                cardStatement = new CardStatement(card, endDate, dueDate, false);
                 cardStatementRepository.save(cardStatement);
             }
 
             transaction.setCardStatement(cardStatement);
             transactionRepository.save(transaction);
         }
+    }
 
+    public boolean getCardLimit(Card card){
+        try {
+            CardControlResponse cardControlResponse = cardControl.getCreditCard(card.getCardNumber());
+            card.setLimit(cardControlResponse.getLimit());
+            card.setDueDay(cardControlResponse.getCardDueResponse().getDay());
+
+            transactionTemplate.execute(status -> {
+                cardRepository.save(card);
+                return true;
+            });
+
+            return true;
+        } catch (FeignException exception){
+            logger.error("Error in Credit Card API - Status code: {}, Body: {}, Message: {}",
+                    exception.status(),
+                    exception.contentUTF8(),
+                    exception.getMessage());
+            return false;
+        }
     }
 
 }
